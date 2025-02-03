@@ -58,28 +58,60 @@ sudo ./end.sh
 # User: Root
 # Passward: stramash
 
-For Stramash, both kernel need insert the 
-# Both Machines run
+For Stramash, both kernels need insert the module 
+We have 3 different memory models, once the start opens, it opens 3 pair of machines in 3 windows with 1 tmux session
+First is the Stramash Shard model, Second is the Stramash Separated model, and Third is the SHM
+
+In each tmux window, you see 2 machines, left is x86,and  right is arm, or you can use $(uname -a) to check
+Remember depends on speed, usually x86 is slower since it has more instructions,
+so insert the module on x86 side first, wait for 3sec, insert arm module
+
+# For first 2 Stramash Machines pair run
 insmod stramash_msg_shm.ko
-# Both Machines run
+# For last SHM Machines pair run
 insmod shm_msg_shm.ko
 
-# Run cg
-cd ./NPB_AE/cg;cat /proc/cache_sync_switch;cat /proc/popcorn_icount_switch;
-# Run is
-cd ./NPB_AE/is;cat /proc/cache_sync_switch;cat /proc/popcorn_icount_switch;
-# Run ft
-cd ./NPB_AE/ft;cat /proc/cache_sync_switch;cat /proc/popcorn_icount_switch;
-# Run mg
-cd ./NPB_AE/mg;cat /proc/cache_sync_switch;cat /proc/popcorn_icount_switch;
+Please run the following command.
+
+# Run NPB benchmark
+$BIN could be one of the 4 (cg/is/ft/mg)
+cd ./NPB_AE/$BIN;cat /proc/cache_sync_switch;cat /proc/popcorn_icount_switch;
 ```
 
 
-#### 7. Check the Results **Todo**
+#### 7. Check the Results 
+```bash
+EXAMPLE RESULT shown below
+
+The EXPERIMENT WE ARE EVALUATION IS: Figure 9. NPB benchmark results
+
+Both Shared and Separated model
 Final Runtime = x86 Runtime + arm Runtime
 
-Fully Shared = Final Runtime - Remote Memory Hits  * 0.455
+For the Fully Shared model, because there is no remote access, we can just
+ minus the feedback instruction from our cache model
+Fully Shared = Final Runtime - Remote Memory Hits  * 0.455 (Either use the result from Separated model or Shared model) 
+
+0.455 is the difference between remote access and local access.
+Check the file  -> https://github.com/systems-nuts/Stramash-AE/blob/main/stramash-qemu/contrib/plugins/cache-sim-feedback.c#L215
+#define Local_mem_overhead 360
+#define Remote_mem_overhead 660
+660/360 => 0.455
+We use this to reduce the Machine to run.
 
 
+For SHM, it is the same, however, because only the access to the message ring will be counted as remote access
+Final Runtime = x86 Runtime + arm Runtime
+Thus, SHM Fully Shared = Final Runtime - Remote Memory Hits  * 0.455
+Same since fully shared doesn't have remote access. 
+
+SHM Separated = Final Runtime - Remote Memory Hits(only x86) * 0.455
+Because in the separated model, the x86 access to the shared memory ring is local,
+while it is exposed to the arm through sim CXL, so we consider arm access to be remote access,
+so the total runtime will be minus by the Remote Memory Hits of x86, which we consider is local now.
+
+For the Shared model, both access to the ring buffer will be considered as remote, just  => x86 Runtime + arm Runtime
+
+```
 ![1ce570995205f6cba0bf2e43502fb43](https://github.com/user-attachments/assets/0a496074-2221-4b9a-8fbc-352ef0180740)
 
